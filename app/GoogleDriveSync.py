@@ -18,18 +18,14 @@ logger = logging.getLogger()
 handler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 handler.setFormatter(formatter)
-logger.addHandler(handler)
-#logger.setLevel(logging.DEBUG)
-#logging.Logger.disabled = True
-#logging.disable(logging.NOTSET)
-#logger.setLevel(logging.NOTSET)  
+logger.addHandler(handler) 
 logger.setLevel(logging.NOTSET)
-logger.disabled = False
+logging.disable(logging.CRITICAL) #disables all logs
 
 SCOPES = 'https://www.googleapis.com/auth/drive'
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'GoogleDriveManager'
-FOLDER_TO_BE_SYNCED_PATH= 'L:\GOOGLE_DRIVE_SYNCER_TEST_FOLDER'
+FOLDER_TO_BE_SYNCED_PATH=r'C:\Users\igbt6\Desktop\CurrentProjects\GoogleDriveFileSynchronizer\test\GOOGLE_DRIVE_SYNCER_TEST_FOLDER'
 FILE_TYPE=frozenset(["FILE","FOLDER"])
 
 class GoogleDriveSynchronizer():
