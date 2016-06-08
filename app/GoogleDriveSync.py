@@ -25,7 +25,8 @@ logging.disable(logging.CRITICAL) #disables all logs
 SCOPES = 'https://www.googleapis.com/auth/drive'
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'GoogleDriveManager'
-FOLDER_TO_BE_SYNCED_PATH=r'C:\Users\igbt6\Desktop\CurrentProjects\GoogleDriveFileSynchronizer\test\GOOGLE_DRIVE_SYNCER_TEST_FOLDER'
+FOLDER_TO_BE_SYNCED_PATH=r'L:\EBOOKS'
+#FOLDER_TO_BE_SYNCED_PATH=r'C:\Users\igbt6\Desktop\CurrentProjects\GoogleDriveFileSynchronizer\test\GOOGLE_DRIVE_SYNCER_TEST_FOLDER'
 FILE_TYPE=frozenset(["FILE","FOLDER"])
 
 class GoogleDriveSynchronizer():
@@ -54,6 +55,11 @@ class GoogleDriveSynchronizer():
         if not credentials or credentials.invalid:
             flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE, SCOPES)
             flow.user_agent = APPLICATION_NAME
+            try:
+                import argparse
+                flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
+            except ImportError:
+                flags = None
             if flags:
                 credentials = tools.run_flow(flow, store, flags)
             else: # Needed only for compatibility with Python 2.6
@@ -132,40 +138,38 @@ class GoogleDriveSynchronizer():
         parent_folder_name=os.path.split(splitted_path[0])[1]
         return file_name, parent_folder_name
     
-    def create_folders_tree(self,folders):
-        if folders is None or len(folders)==0:
+    def create_folders_tree(self,folder_paths_list:list):
+        if folder_paths_list is None or len(folder_paths_list)==0:
             raise ValueError("Incorrect folders format")
         self._folders_tree=[self._root_folder]
         #creates folders in root folder
-        for name, data in folders.items():
-            for path in data["FOLDERS"]:
-                folder_name,parent_folder_name=self._get_name_and_parent_from_path(path)
-                logger.debug(parent_folder_name+" -> "+folder_name)
-                for folder in self._folders_tree:
-                    if folder.name==parent_folder_name:
-                        temp_folder=GoogleDriveFile(folder_name)
-                        temp_folder.parent_id=folder.id
-                        id=self.check_if_file_exist_create_new_one(folder_name,parent_id=temp_folder.parent_id)
-                        temp_folder.id=id 
-                        self._folders_tree.append(temp_folder)                        
+        for path in folder_paths_list:
+            folder_name,parent_folder_name=self._get_name_and_parent_from_path(path)
+            logger.debug(parent_folder_name+" -> "+folder_name)
+            for folder in self._folders_tree:
+                if folder.name==parent_folder_name:
+                    temp_folder=GoogleDriveFile(folder_name)
+                    temp_folder.parent_id=folder.id
+                    id=self.check_if_file_exist_create_new_one(folder_name,parent_id=temp_folder.parent_id)
+                    temp_folder.id=id 
+                    self._folders_tree.append(temp_folder)                        
     
-    def synchronize_files(self,files_data):
-        if files_data is None or len(files_data)==0:
-            raise ValueError("Incorrect files format")
-        self.create_folders_tree(files_data)
-        for main_folder_name, data in files_data.items():
-            for path in data["FILES"]:
-                file_name,parent_folder_name=self._get_name_and_parent_from_path(path)
-                logger.debug("PATH: "+path+" "+parent_folder_name+" -> "+file_name)
-                for folder in self._folders_tree:
-                    if folder.name==parent_folder_name:
-                        logger.debug("$$$ "+file_name+" "+path+" "+folder.id+" ")
-                        try:
-                            if not self.find_folder_or_file_by_name(file_name,folder.id):
-                                self.insert_file_in_folder(file_name,path,folder.id)
-                        except:
-                            pass #just skip fail
-                        break
+    def synchronize_files(self,folder_paths, files_paths):
+        if files_paths is None or len(files_paths)==0 or folder_paths is None or len(folder_paths)==0:
+            raise ValueError("Incorrect file/folder paths argument format")
+        self.create_folders_tree(folder_paths)
+        for path in files_paths:
+            file_name,parent_folder_name=self._get_name_and_parent_from_path(path)
+            logger.debug("PATH: "+path+" "+parent_folder_name+" -> "+file_name)
+            for folder in self._folders_tree:
+                if folder.name==parent_folder_name:
+                    logger.debug("$$$ "+file_name+" "+path+" "+folder.id+" ")
+                    try:
+                        if not self.find_folder_or_file_by_name(file_name,folder.id):
+                            self.insert_file_in_folder(file_name,path,folder.id)
+                    except:
+                        pass #just skip fail
+                    break
                         
             
         
@@ -191,97 +195,23 @@ class FilesFolder():
         self._list_all_filepaths()
         
     def _list_all_filepaths(self):
-        #logger.debug(os.listdir(self._root_path))
         folders_set=set([])
         files_set= set([])
         for file_path in os.listdir(self._root_path):
             if os.path.isfile(os.path.join(self._root_path,file_path)):
                 files_set.add(os.path.join(self._root_path,file_path))
-            else:
-                self._files[file_path]={"PATH":os.path.join(self._root_path,file_path)}
-        for name,dataDict in self._files.items():
-            for root_dir, subdirs, files in os.walk(dataDict["PATH"]):
-                folders_set.add(root_dir)
+        for root_dir, subdirs, files in os.walk(self._root_path):
+            folders_set.add(root_dir)
+            for file in files:
+                    files_set.add(os.path.join(root_dir,file))
+            for subdir in subdirs:
+                folders_set.add(os.path.join(root_dir,subdir))
                 for file in files:
-                        files_set.add(os.path.join(root_dir,file))
-                for subdir in subdirs:
-                    folders_set.add(os.path.join(root_dir,subdir))
-                    for file in files:
-                        files_set.add(os.path.join(root_dir,file))
-
-            with open("result.txt","a") as f:
-                f.write("\n--------------------NAME---------------------------\n")
-                f.write("----------------------NAME---------------------------\n")
-                f.write("----------------------NAME---------------------------\n")
-                f.write("----------------------NAME---------------------------\n")
-                f.write("----------------------NAME---------------------------\n")
-                f.write("----------------------NAME---------------------------\n")
-                f.write("----------------------NAME---------------------------\n")
-                f.write("----------------------NAME---------------------------\n")
-                f.write("----------------------NAME---------------------------\n")
-                f.write("----------------------NAME---------------------------\n")
-                f.write("----------------------NAME---------------------------\n")
-                f.write("----------------------NAME---------------------------\n")
-                f.write("----------------------NAME---------------------------\n")
-                f.write(name)
-                f.write('\n')
-                
-                f.write("\n--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")
-                for i in sorted(folders_set, key=len):
-                    f.write(i)
-                    f.write('\n')
-                f.write("\n--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                f.write("--------------------FILES---------------------------\n")
-                for i in files_set:
-                    f.write(i)
-                    f.write('\n')
-            self._files[name]["FOLDERS"]=sorted(folders_set, key=len)
-            self._files[name]["FILES"]=list(files_set)
-            # logger.debug("\n--------------------PATH---------------------------\n")
-            # logger.debug(self._files[name]["PATH"])
-            # logger.debug("\n--------------------FOLDERS---------------------------\n")
-            # logger.debug(self._files[name]["FOLDERS"])
-            # logger.debug("\n--------------------FILES---------------------------\n")
-            # logger.debug(self._files[name]["FILES"])
-            #break
-      
+                    files_set.add(os.path.join(root_dir,file))
+        self._files["FOLDERS"]=sorted(folders_set, key=len)
+        self._files["FILES"]=list(files_set)
+        self.dump_folder_content_to_file()
+    
     def extract_folder_name_from_path(self,folder_path):
         m =re.search(r'\\(\w*)$',folder_path)
         if m:
@@ -292,12 +222,48 @@ class FilesFolder():
     @property
     def files(self):
         return self._files
+        
+    def get_folder_paths_list(self):
+        #return sorted([ path for name, data in self._files.items() for path in self._files[name]["FOLDERS"]], key=len)
+        return sorted(self._files["FOLDERS"], key=len)
+        
+        
+    def get_files_paths_list(self):
+        return self._files["FILES"]
     
     @property
     def root_folder_path(self):
         return self._root_path
         
-               
+    def dump_folder_content_to_file(self):
+        with open("result.txt","w") as f:
+            for folder in self._files["FOLDERS"]:
+                f.write("\n--------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write(os.path.split(folder)[1])
+                f.write('\n')                
+                f.write("\n--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")            
+                f.write(folder)
+                f.write('\n')
+            for file in self._files["FILES"]:
+                f.write("\n--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write(file)
+                f.write('\n')
+
+                
+                
 class GoogleDriveFile():
     """ Helper class that describes File or Folder on GoogleDrive server"""
     def __init__(self,file_name):
@@ -309,17 +275,4 @@ class GoogleDriveFile():
 if __name__ == '__main__':
     file_folder = FilesFolder(os.path.join(FOLDER_TO_BE_SYNCED_PATH))
     google_drive_syncer= GoogleDriveSynchronizer(file_folder.extract_folder_name_from_path(file_folder.root_folder_path))  
-    #google_drive_syncer.list_all_files_in_main_folder()
-    #for name, data in file_folder.files.items():
-        #google_drive_syncer.check_if_file_exist_create_new_one(name)
-    # TEST1
-    # id=google_drive_syncer.check_if_file_exist_create_new_one("TEST_FOLDER")
-    # google_drive_syncer.insert_file_in_folder("TestFolderFile.txt",os.path.join(FOLDER_TO_BE_SYNCED_PATH,"cowsay.txt"),id)
-    # id=google_drive_syncer.check_if_file_exist_create_new_one("TEST_SUB_FOLDER",id)
-    # google_drive_syncer.insert_file_in_folder("TestSubFolderFile.txt",os.path.join(FOLDER_TO_BE_SYNCED_PATH,"cowsay.txt"),id)
-    
-    #TEST2
-    #google_drive_syncer.create_folders_tree(file_folder.files)
-    
-    #TEST3
-    google_drive_syncer.synchronize_files(file_folder.files)
+    google_drive_syncer.synchronize_files(file_folder.get_folder_paths_list(),file_folder.get_files_paths_list())
