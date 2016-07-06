@@ -26,7 +26,6 @@ SCOPES = 'https://www.googleapis.com/auth/drive'
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'GoogleDriveManager'
 FOLDER_TO_BE_SYNCED_PATH=r'L:\EBOOKS'
-#FOLDER_TO_BE_SYNCED_PATH=r'C:\Users\igbt6\Desktop\CurrentProjects\GoogleDriveFileSynchronizer\test\GOOGLE_DRIVE_SYNCER_TEST_FOLDER'
 FILE_TYPE=frozenset(["FILE","FOLDER"])
 
 class GoogleDriveSynchronizer():
@@ -224,7 +223,6 @@ class FilesFolder():
         return self._files
         
     def get_folder_paths_list(self):
-        #return sorted([ path for name, data in self._files.items() for path in self._files[name]["FOLDERS"]], key=len)
         return sorted(self._files["FOLDERS"], key=len)
         
         
@@ -244,12 +242,12 @@ class FilesFolder():
                 f.write("----------------------NAME---------------------------\n")
                 f.write("----------------------NAME---------------------------\n")
                 f.write(os.path.split(folder)[1])
-                f.write('\n')                
+                f.write('\n')
                 f.write("\n--------------------FOLDERS---------------------------\n")
                 f.write("--------------------FOLDERS---------------------------\n")
                 f.write("--------------------FOLDERS---------------------------\n")
                 f.write("--------------------FOLDERS---------------------------\n")
-                f.write("--------------------FOLDERS---------------------------\n")            
+                f.write("--------------------FOLDERS---------------------------\n")
                 f.write(folder)
                 f.write('\n')
             for file in self._files["FILES"]:
@@ -265,14 +263,12 @@ class FilesFolder():
                 
                 
 class GoogleDriveFile():
-    """ Helper class that describes File or Folder on GoogleDrive server"""
+    ''' Helper class that describes File or Folder on GoogleDrive server'''
     def __init__(self,file_name):
         self.name= file_name
         self.id =None
         self.parent_id=''
-    
-        
 if __name__ == '__main__':
     file_folder = FilesFolder(os.path.join(FOLDER_TO_BE_SYNCED_PATH))
-    google_drive_syncer= GoogleDriveSynchronizer(file_folder.extract_folder_name_from_path(file_folder.root_folder_path))  
+    google_drive_syncer= GoogleDriveSynchronizer(file_folder.extract_folder_name_from_path(file_folder.root_folder_path))
     google_drive_syncer.synchronize_files(file_folder.get_folder_paths_list(),file_folder.get_files_paths_list())
